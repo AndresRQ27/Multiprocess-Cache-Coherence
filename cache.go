@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 
+//Cache - struct that describes the cache, divided into CacheLines
 type Cache struct {
 	CacheMap map[int]*CacheLine
 }
@@ -14,9 +15,7 @@ func (cache Cache) String() string {
 	return ""
 }
 
-/**
-	Constructor of Cache that initialize the map with 8 default CacheLines
- */
+//NewCache - Constructor of Cache that initialize the map with 8 default CacheLines
 func NewCache() *Cache {
 	cache := Cache{map[int]*CacheLine{
 		0: EmptyCacheLine(),

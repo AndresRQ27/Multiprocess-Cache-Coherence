@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 
+//CacheLine - struct that describes the values of each cache line (state, mem, data)
 type CacheLine struct {
 	Snoop *SnoopProtocol
 	MemCell int
@@ -15,9 +16,7 @@ func (cacheLine CacheLine) String() string {
 	return fmt.Sprintf("Snoop: %v, MemCell: %v, Data: %v", cacheLine.Snoop, cacheLine.MemCell, cacheLine.Data)
 }
 
-/**
-	Method of CacheLine that resets its value to default
- */
+//ClearCacheLine - method that resets its value to default
 func (cacheLine CacheLine) ClearCacheLine() {
 	cacheLine.Snoop.M = false
 	cacheLine.Snoop.S = false
@@ -27,9 +26,7 @@ func (cacheLine CacheLine) ClearCacheLine() {
 	return
 }
 
-/**
-	Constructor of CacheLine that initialize its value to default
- */
+//EmptyCacheLine - Constructor of CacheLine that initialize its value to default
 func EmptyCacheLine() *CacheLine  {
 	return &CacheLine{
 		Snoop:   NewSnoopProtocol(),

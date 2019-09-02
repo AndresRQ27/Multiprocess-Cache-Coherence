@@ -2,13 +2,12 @@ package main
 
 import "fmt"
 
+//SnoopProtocol - struct with the different states of the cache
 type SnoopProtocol struct {
 	M, S, I bool
 }
 
-/**
-	Interface Stringer that prints the values of the SnoopProtocol
- */
+//Interface Stringer - prints the values of the SnoopProtocol
 func (snoop SnoopProtocol) String() string {
 	if snoop.M {
 		return fmt.Sprintf("Modified")
@@ -21,9 +20,7 @@ func (snoop SnoopProtocol) String() string {
 	}
 }
 
-/**
-	Constructor of SnoopProtocol that initialize the struct in Invalid
- */
+//NewSnoopProtocol - Constructor of SnoopProtocol that initialize the struct in Invalid
 func NewSnoopProtocol() *SnoopProtocol {
 	return &SnoopProtocol{M:false, S:false, I:true}
 }
