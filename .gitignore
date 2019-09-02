@@ -3,3 +3,5 @@
 .idea/Multiprocess-Cache-Coherence.iml
 .idea/vcs.xml
 .idea/.gitignore
+
+.vscode/
