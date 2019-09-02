@@ -5,14 +5,13 @@ import (
 	"time"
 )
 
+//Memory - struct that abstracts memory usage with mutex
 type Memory struct {
 	MemoryMap map[int]string
-	Mux sync.Mutex
+	Mux *sync.Mutex
 }
 
-/**
-	Function that reads the memoryMap, according to the cellNumber, with a delay
- */
+//MemoryRead - function that reads the memoryMap, according to the cellNumber, with a delay
 func (mem Memory) MemoryRead(memCell int) string {
 	mem.Mux.Lock()
 	defer mem.Mux.Unlock()
@@ -21,9 +20,7 @@ func (mem Memory) MemoryRead(memCell int) string {
 	return mem.MemoryMap[memCell]
 }
 
-/**
-	Function that writes a newValue in the memoryMap, according to the cellNumber, with a delay
-*/
+//MemoryWrite - function that writes a newValue in the memoryMap, according to the cellNumber, with a delay
 func (mem Memory) MemoryWrite(memCell int, memValue string) {
 	mem.Mux.Lock()
 	defer mem.Mux.Unlock()
@@ -34,7 +31,7 @@ func (mem Memory) MemoryWrite(memCell int, memValue string) {
 	return
 }
 
-//Constructor
+//NewMemory - constructor of a empty memory
 func NewMemory() *Memory {
 	memMap := map[int]string{
 		0: "",
@@ -57,7 +54,7 @@ func NewMemory() *Memory {
 
 	memory := Memory{
 		MemoryMap: memMap,
-		Mux:       sync.Mutex{},
+		Mux:       &sync.Mutex{},
 	}
 	return &memory
 }
