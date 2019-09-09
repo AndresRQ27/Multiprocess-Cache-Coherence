@@ -8,26 +8,26 @@ import (
 //Memory - struct that abstracts Memory usage with mutex
 type Memory struct {
 	MemoryMap map[int]string
-	Mux *sync.Mutex
+	Mux sync.Mutex
 }
 
 //MemoryRead - method that reads the memoryMap, according to the cellNumber, with a delay
-func (mem *Memory) MemoryRead(memCell int) string {
+func (mem *Memory) MemoryRead(memoryAddress int) string {
 	mem.Mux.Lock()
 	defer mem.Mux.Unlock()
 
-	time.Sleep(5000 * time.Millisecond) //Sleeps for 5 seconds
-	return mem.MemoryMap[memCell]
+	time.Sleep(10 * Clock) //Penalization time for using the bus
+	return mem.MemoryMap[memoryAddress]
 }
 
 //MemoryWrite - method that writes a newValue in the memoryMap, according to the cellNumber, with a delay
-func (mem *Memory) MemoryWrite(memCell int, memValue string) {
+func (mem *Memory) MemoryWrite(memoryAddress int, memValue string) {
 	mem.Mux.Lock()
 	defer mem.Mux.Unlock()
 
-	time.Sleep(5000 * time.Millisecond) //Sleeps for 5 seconds
+	time.Sleep(10 * Clock) //Penalization time for using the bus
 
-	mem.MemoryMap[memCell] = memValue
+	mem.MemoryMap[memoryAddress] = memValue
 	return
 }
 
@@ -54,7 +54,6 @@ func NewMemory() *Memory {
 
 	mem := Memory{
 		MemoryMap: memMap,
-		Mux:       &sync.Mutex{},
 	}
 	return &mem
 }

@@ -4,54 +4,48 @@ import "fmt"
 
 //CacheLine - struct that describes the values of each cache line (state, mem, data)
 type CacheLine struct {
-	State, MemCell int
+	Ownership bool
+	State, tag int
 	Data string
 }
 
 //CacheLineRead - method that returns the values inside the CacheLine struct
-func (line *CacheLine) CacheLineRead() (string, string, int) {
+func (line *CacheLine) CacheLineRead() (bool, string, int, string) {
 	var state string
 
 	switch line.State {
-		case 0: {
-			state = "M"
-		}
-		case 1: {
-			state = "S"
-		}
-		case 2: {
-			state = "I"
-		}
-		default: {
-			fmt.Println("Invalid value given")
-			state = ""
-		}
+	case 0: 
+		state = "M"
+	case 1: 
+		state = "S"
+	case 2: 
+		state = "I"
+	default: 
+		fmt.Println("Invalid value given")
+		state = ""
 	}
 
-	return line.Data, state, line.MemCell
+	return line.Ownership, state, line.tag, line.Data
 }
 
 //CacheLineWrite - method that writes the given parameters into the cacheLine
-func (line *CacheLine) CacheLineWrite(memCell int, data, state string)  {
+func (line *CacheLine) CacheLineWrite(ownership bool, tag int, data, state string)  {
 
 	switch state {
-		case "M": {
-			line.State = 0
-		}
-		case "S": {
-			line.State = 1
-		}
-		case "I": {
-			line.State = 2
-		}
-		default: {
-			fmt.Println("Invalid state given")
-			line.State = -1
-		}
+	case "M": 
+		line.State = 0
+	case "S": 
+		line.State = 1
+	case "I": 
+		line.State = 2
+	default: 
+		fmt.Println("Invalid state given")
+		line.State = -1
 	}
 
 	line.Data = data
-	line.MemCell = memCell
+	line.tag = tag
+	line.Ownership = ownership
 	return
 }
 
@@ -59,14 +53,15 @@ func (line *CacheLine) CacheLineWrite(memCell int, data, state string)  {
 	Interface Stringer that prints the values of the CacheLine
  */
 func (line *CacheLine) String() string {
-	return fmt.Sprintf("State: %v, MemCell: %v, Data: %v", line.State, line.MemCell, line.Data)
+	return fmt.Sprintf("State: %v, tag: %v, Data: %v", line.State, line.tag, line.Data)
 }
 
 //ClearCacheLine - method that resets its value to default
 func (line *CacheLine) ClearCacheLine() {
 	line.State = -1
-	line.MemCell = -1
+	line.tag = -1
 	line.Data = ""
+	line.Ownership = false
 	return
 }
 
@@ -74,7 +69,8 @@ func (line *CacheLine) ClearCacheLine() {
 func EmptyCacheLine() *CacheLine {
 	return &CacheLine{
 		State: -1,
-		MemCell: -1,
+		tag: -1,
 		Data:    "",
+		Ownership: false,
 	}
 }
