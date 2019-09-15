@@ -15,8 +15,8 @@ type Memory struct {
 func (mem *Memory) MemoryRead(memoryAddress int) string {
 	mem.Mux.Lock()
 	defer mem.Mux.Unlock()
-
-	time.Sleep(10 * Clock) //Penalization time for using the bus
+	
+	time.Sleep(5 * Clock) //Penalization time for using the bus
 	return mem.MemoryMap[memoryAddress]
 }
 
@@ -25,7 +25,7 @@ func (mem *Memory) MemoryWrite(memoryAddress int, memValue string) {
 	mem.Mux.Lock()
 	defer mem.Mux.Unlock()
 
-	time.Sleep(10 * Clock) //Penalization time for using the bus
+	time.Sleep(5 * Clock) //Penalization time for using the bus
 
 	mem.MemoryMap[memoryAddress] = memValue
 	return
