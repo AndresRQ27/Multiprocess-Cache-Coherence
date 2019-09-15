@@ -40,7 +40,7 @@ func (line *CacheLine) CacheLineWrite(ownership bool, tag int, data, state strin
 		line.State = 2
 	default: 
 		fmt.Println("Invalid state given")
-		line.State = -1
+		line.State = 2
 	}
 
 	line.Data = data
@@ -58,7 +58,7 @@ func (line *CacheLine) String() string {
 
 //ClearCacheLine - method that resets its value to default
 func (line *CacheLine) ClearCacheLine() {
-	line.State = -1
+	line.State = 2
 	line.tag = -1
 	line.Data = ""
 	line.Ownership = false
@@ -68,7 +68,7 @@ func (line *CacheLine) ClearCacheLine() {
 //EmptyCacheLine - Constructor of CacheLine that initialize its value to default
 func EmptyCacheLine() *CacheLine {
 	return &CacheLine{
-		State: -1,
+		State: 2,
 		tag: -1,
 		Data:    "",
 		Ownership: false,
