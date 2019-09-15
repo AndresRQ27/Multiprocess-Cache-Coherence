@@ -20,7 +20,7 @@ const Clock = 1 * time.Second
 var InstructionCounter = 0
 
 //Mean - bigger = +STR instructions / smaller = +LDR instructions
-const Mean = -100
+const Mean = 10
 //StdDev - bigger = +STD/LDR instructions / smaller = -STD/LDR instructions
 const StdDev = 2
 /////Default values generates random distributed numbers between 0 and 20
