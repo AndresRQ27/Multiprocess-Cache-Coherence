@@ -21,13 +21,14 @@ func (processor *Processor) ExecuteInstruction() {
 			case "LDR":
 				block := processor.Random.Intn(16) //Random linear distributed number between 0 and 15
 				*processor.PublicCacheController <- Message{Value: "", Tag: block, CPU: processor.Name}
+				<-*processor.PublicCacheController
 			case "STR":
 				block := processor.Random.Intn(16) //Random linear distributed number between 0 and 15
 				*processor.PublicCacheController <- Message{Value: processor.Name, Tag: block, CPU: processor.Name}
+				<-*processor.PublicCacheController
 			default:
 				break
 			}
-			<-*processor.PublicCacheController
 		}
 	}
 }
