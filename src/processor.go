@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"fmt"
 )
 
 //Processor - struct that contains the parameters needed to simulate random instructions
@@ -27,6 +28,7 @@ func (processor *Processor) ExecuteInstruction() {
 				*processor.PublicCacheController <- Message{Value: processor.Name, Tag: block, CPU: processor.Name}
 				<-*processor.PublicCacheController
 			default:
+				fmt.Println("Default from",processor.Name)
 				break
 			}
 		}
@@ -49,9 +51,9 @@ func (processor *Processor) ExecuteNextInstruction() bool {
 func (processor *Processor) GenerateInstructions() string {
 	randomNumber := int(processor.Random.NormFloat64()*StdDev + Mean) //From 0 to 20 normally distributed
 	switch {
-	case randomNumber > 15: //Numbers bigger than 15, execute STR
+	case randomNumber > 12: //Numbers bigger than 15, execute STR
 		return "STR"
-	case randomNumber < 5: //Numbers smaller than 5, execute LDR
+	case randomNumber < 7: //Numbers smaller than 5, execute LDR
 		return "LDR"
 	default: //Numbers between [7,14]
 		return "default"
