@@ -4,6 +4,7 @@ import (
 	"time"
 	"sync"
 	"fmt"
+	"strconv"
 )
 
 /**
@@ -31,6 +32,8 @@ type CacheController struct {
 	PrivateChannelCPU1 *chan Message
 	PrivateChannelCPU2 *chan Message
 	PrivateChannelCPU3 *chan Message
+
+	GUIChannel *chan Message
 }
 
 //Listen - method in infinite loop that listens for requests
@@ -41,14 +44,11 @@ func (controller *CacheController) Listen() {
 		select {
 		case receivedMessage := <-*myPublicChannel: //Reads broadcast messages
 			controller.UpdateInfo(receivedMessage)
-	
 		case receivedMessage := <-*controller.PrivateProcessor:  //Case when processor LDR or STR
 			if receivedMessage.Value == "" { //If value is empty, Processor sent a LDR (read)
 				controller.ProcessorRead(receivedMessage.Tag, myPublicChannel, myPrivateChannel)
-				fmt.Printf("STR %s in %d by %s\n",receivedMessage.Value,receivedMessage.Tag,receivedMessage.CPU)
 			} else {
 				controller.ProcessorWrite(receivedMessage.Tag, receivedMessage.Value, myPublicChannel)
-				fmt.Printf("STR %s in %d by %s\n",receivedMessage.Value,receivedMessage.Tag,receivedMessage.CPU)
 			}
 		}
 	}
@@ -57,19 +57,23 @@ func (controller *CacheController) Listen() {
 //ProcessorRead - method that looks for the memory value and returns it through a channel
 func (controller *CacheController) ProcessorRead(memoryAddress int, myPublicChannel, myPrivateChannel *chan Message) {
 	cacheOwner, cacheState, cacheTag, cacheData := controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineRead() //First, look in the cache
+	msg := ""
 
 	if cacheState == "I" { //Normal miss
+		msg += "Read miss in block " + strconv.Itoa(memoryAddress) + " (I)"
 		controller.ReadMiss(memoryAddress, myPublicChannel, myPrivateChannel)  //Updates the value in the cache for the correct one
 		_, _, cacheTag, cacheData = controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineRead() //Retrieve the new value
 		*controller.PrivateProcessor <- Message{Tag:cacheTag, Value:cacheData} //Sends the new value from cache to the processor
 
 	} else if cacheState == "S" {
 		if cacheTag == memoryAddress { //Read hit
+			msg += "Read hit in block " + strconv.Itoa(memoryAddress) + " (S)"
 			*controller.PrivateProcessor <- Message{Tag:cacheTag, Value:cacheData} //Sends the cacheData from cache to the processor
 		} else { //Allocation miss
 			if cacheOwner { //If cacheOwner disappears, save the value to memory
 				controller.SharedMemory.MemoryWrite(cacheTag, cacheData) //Write-back to memory
 			}
+			msg += "Read miss in block " + strconv.Itoa(memoryAddress) + " (Allocation-S)"
 			controller.ReadMiss(memoryAddress, myPublicChannel, myPrivateChannel)  //Updates the value in the cache for the correct one
 			_, _, cacheTag, cacheData = controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineRead() //Retrieve the new value
 			*controller.PrivateProcessor <- Message{Tag:cacheTag, Value:cacheData} //Sends the new value from cache to the processor
@@ -77,8 +81,10 @@ func (controller *CacheController) ProcessorRead(memoryAddress int, myPublicChan
 
 	} else if cacheState == "M" { //"M" always have ownership
 		if cacheTag == memoryAddress { //Read hit
+			msg += "Read hit in block " + strconv.Itoa(memoryAddress) + " (M)"
 			*controller.PrivateProcessor <- Message{Tag:cacheTag, Value:cacheData} //Sends the cacheData from cache to the processor
 		} else { //Allocation miss
+			msg += "Read miss in block " + strconv.Itoa(memoryAddress) + " (Allocation-M)"
 			controller.SharedMemory.MemoryWrite(cacheTag, cacheData) //Write-back to memory
 			controller.ReadMiss(memoryAddress, myPublicChannel, myPrivateChannel)  //Updates the value in the cache for the correct one
 			_, _, cacheTag, cacheData = controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineRead() //Retrieve the new value
@@ -88,27 +94,36 @@ func (controller *CacheController) ProcessorRead(memoryAddress int, myPublicChan
 	} else {
 		fmt.Println("Invalid cacheState somewhere. Check your code")
 	}
+
+	msg += "\n"
+	*controller.GUIChannel<- Message{Value:msg, CPU:controller.Name}
 	return
 }
 
 //ProcessorWrite - method that writes the memory value
 func (controller *CacheController) ProcessorWrite(memoryAddress int, memoryValue string, myPublicChannel *chan Message)  {
 	_, cacheState, cacheTag, cacheData := controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineRead() //Get the important values from the cache
-	
+	msg := ""
+
 	if cacheState == "I" { //Tag could not match, but invalidate where you write, not what you have
+		msg += "Write miss in block " + strconv.Itoa(memoryAddress) + " (I)"
 		controller.WriteMiss(memoryAddress, myPublicChannel)
 		
 	} else if cacheState == "S" {
 		if cacheTag == memoryAddress {
+			msg += "Write hit in block " + strconv.Itoa(memoryAddress) + " (Invalidate-S)"
 			controller.Invalidate(memoryAddress, myPublicChannel)
 		} else {
+			msg += "Write miss in block " + strconv.Itoa(memoryAddress) + " (S)"
 			controller.WriteMiss(memoryAddress, myPublicChannel)
 		}
 
 	} else if cacheState == "M" {
 		if cacheTag == memoryAddress {
 			//Do nothing, only you have it
+			msg += "Write hit in block " + strconv.Itoa(memoryAddress) + " (M)"
 		} else {
+			msg += "Write miss in block " + strconv.Itoa(memoryAddress) + " (M)"
 			controller.SharedMemory.MemoryWrite(cacheTag, cacheData) //Write-back to memory
 			controller.WriteMiss(memoryAddress, myPublicChannel)
 		}
@@ -119,13 +134,17 @@ func (controller *CacheController) ProcessorWrite(memoryAddress int, memoryValue
 
 	controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineWrite(true, memoryAddress, memoryValue, "M") //Write the new value to the cache
 	*controller.PrivateProcessor <- Message{Tag:-1, Value:"ok"} //Sends ok to the processor
+	
+	msg += "\n"
+	*controller.GUIChannel<- Message{Value:msg, CPU:controller.Name}
 	return
 }
 
 //UpdateInfo - method that manages the received messages from MyChannel (from a broadcast)
 func (controller *CacheController) UpdateInfo(message Message)  {
 	cacheOwner, cacheState, cacheTag, cacheData := controller.PrivateCache[message.Tag%BlocksInCache].CacheLineRead() //Get the important values from the cache
-	
+	msg := ""
+
 	//Responses for other threads. Use private channel
 	if message.Value == "Read" { //In read, you answer always answer, either blank or the cacheData
 		 askingChannel := *controller.PrivateChannelName(message.CPU) //Channel that is asking for the info
@@ -135,6 +154,7 @@ func (controller *CacheController) UpdateInfo(message Message)  {
 				if cacheOwner { //You're the cacheOwner. Answer the call
 					askingChannel <-Message{Tag:cacheTag, Value:cacheData} //Sends the cacheData
 					controller.PrivateCache[message.Tag%BlocksInCache].CacheLineWrite(false, cacheTag, cacheData, "S") //Lose ownership
+					msg += "Block:"+ strconv.Itoa(message.Tag) + " SO -> S by " + message.CPU + "\n"
 				} else {
 					askingChannel <-Message{Tag:cacheTag, Value:""} //Sends empty
 				}
@@ -142,6 +162,7 @@ func (controller *CacheController) UpdateInfo(message Message)  {
 			} else if cacheState == "M" { //If M, always the cacheOwner
 				askingChannel <-Message{Tag:cacheTag, Value:cacheData} //Sends the cacheData
 				controller.PrivateCache[message.Tag%BlocksInCache].CacheLineWrite(false, cacheTag, cacheData, "S") //Lose ownership and change cacheState
+				msg += "Block:"+ strconv.Itoa(message.Tag) + " MO -> S by " + message.CPU + "\n"
 
 			} else if cacheState == "I" {
 				askingChannel <-Message{Tag:cacheTag, Value:""} //Sends empty
@@ -155,25 +176,35 @@ func (controller *CacheController) UpdateInfo(message Message)  {
 		}
 
 	} else if message.Value == "Write" { //In write, you update the states
-
-		if cacheState == "S" {
-			if cacheOwner { //"S", but owner. So basically "M"
-				controller.SharedMemory.MemoryWrite(cacheTag, cacheData) //Write-back to memory	
-			}
-			controller.PrivateCache[message.Tag%BlocksInCache].CacheLineWrite(false, cacheTag, cacheData, "I")	
-
-		} else if cacheState == "M" {
-			controller.SharedMemory.MemoryWrite(cacheTag, cacheData) //Write-back to memory
-			controller.PrivateCache[message.Tag%BlocksInCache].CacheLineWrite(false, cacheTag, cacheData, "I")
-
-		} //Exclude "I" cacheState. No need to answer or do anything
+		if cacheTag == message.Tag {
+			if cacheState == "S" {
+				if cacheOwner { //"S", but owner. So basically "M"
+					*controller.GUIChannel<- Message{Value:"Memory accessed\n", CPU:controller.Name}
+					controller.SharedMemory.MemoryWrite(cacheTag, cacheData) //Write-back to memory	
+					msg += "Block:"+ strconv.Itoa(message.Tag) + " SO -> I by " + message.CPU + "\n"
+				} else {
+					msg += "Block:"+ strconv.Itoa(message.Tag) + " S -> I by " + message.CPU + "\n"
+				}
+				controller.PrivateCache[message.Tag%BlocksInCache].CacheLineWrite(false, cacheTag, cacheData, "I")	
+	
+			} else if cacheState == "M" {
+				*controller.GUIChannel<- Message{Value:"Memory accessed\n", CPU:controller.Name}
+				controller.SharedMemory.MemoryWrite(cacheTag, cacheData) //Write-back to memory
+				controller.PrivateCache[message.Tag%BlocksInCache].CacheLineWrite(false, cacheTag, cacheData, "I")
+				msg += "Block:"+ strconv.Itoa(message.Tag) + " M -> I by " + message.CPU + "\n"
+	
+			} //Exclude "I" cacheState. No need to answer or do anything	
+		}//Ignore if it's not the tag
 
 	} else if message.Value == "Invalidate" { //No write-back since is an upgrade of ownership
 		controller.PrivateCache[message.Tag%BlocksInCache].CacheLineWrite(false, cacheTag, cacheData, "I")
+		msg += "Block:"+ strconv.Itoa(message.Tag) + " S -> I (Invalidate) by " + message.CPU + "\n"
 		
 	} else {
 		fmt.Println("Thread expected a message update but received an answer with cacheData.")
 	}	
+
+	*controller.GUIChannel<- Message{Value:msg, CPU:controller.Name}
 	return
 }
 
@@ -192,19 +223,16 @@ func (controller *CacheController) ReadMiss(memoryAddress int, myPublicChannel, 
 	receivedMessage3 := <-*myPrivateChannel
 
 	if receivedMessage1.Value != "" {//Check if the first message has the value
-		fmt.Println("Received message by",controller.Name)
 		controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineWrite(
 			true, receivedMessage1.Tag, receivedMessage1.Value, "S")
 	} else if receivedMessage2.Value != "" {//Check if the second message has the value
-		fmt.Println("Received message by",controller.Name)
 		controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineWrite(
 			true, receivedMessage2.Tag, receivedMessage2.Value, "S")
 	} else if receivedMessage3.Value != "" {//Check if the third message has the value
-		fmt.Println("Received message by",controller.Name)
 		controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineWrite(
 			true, receivedMessage3.Tag, receivedMessage3.Value, "S")
 	} else {//Go get the message from memory
-		fmt.Println("Memory here! by",controller.Name)
+		*controller.GUIChannel<- Message{Value:"Memory accessed\n", CPU:controller.Name}
 		memoryValue := controller.SharedMemory.MemoryRead(memoryAddress)
 		controller.PrivateCache[memoryAddress%BlocksInCache].CacheLineWrite(
 			true, memoryAddress, memoryValue, "S")
@@ -276,11 +304,3 @@ func (controller *CacheController) PrivateChannelName(privateChannelName string)
 		return nil //Should never get here, unless you fuck up
 	}
 }
-
-/*TODO: Challenges with many LDRs & STRs
-* Not so many CPU available to process all the broadcasted messages
-*** CPU broadcasting the same message more than once: multiple sends to same CPU channel
-****** Trash in the CPU channel. Trash in the broadcast channel
-* TODO: do not send CPU name when responding to CPU Channel
-* TODO: should only the cacheOwner do a write-back during a read miss?
-*/
