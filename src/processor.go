@@ -59,9 +59,9 @@ func (processor *Processor) GenerateInstructions() string {
 	randomNumber := int(processor.Random.NormFloat64()*StdDev + Mean) //From 0 to 20 normally distributed
 	switch {
 	case randomNumber > 11: //Numbers bigger than 15, execute STR
-		return "STR"
+		return "STR" //Write
 	case randomNumber < 8: //Numbers smaller than 5, execute LDR
-		return "LDR"
+		return "LDR" //Read
 	default: //Numbers between [7,14]
 		return "default"
 	}

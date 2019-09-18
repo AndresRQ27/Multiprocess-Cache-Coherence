@@ -269,7 +269,7 @@ func ComputerStart(builder *gtk.Builder) {
 	//Infinite loop that manages the counter
 	for {
 		InstructionCounter++ //Add 1 to the instruction counter
-		time.Sleep(5*Clock) //Sleeps for 3 seconds
+		time.Sleep(Clock) //Sleeps for 3 seconds
 	}		
 
 	return
